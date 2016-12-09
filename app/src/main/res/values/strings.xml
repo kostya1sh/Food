@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">Food</string>
+
+    <string name="navigation_drawer_open">Open navigation drawer</string>
+    <string name="navigation_drawer_close">Close navigation drawer</string>
+
+    <string name="catalog">Каталог</string>
+    <string name="contacts">Контакты</string>
+
+    <string name="name">Название:</string>
+    <string name="price">Цена:</string>
+    <string name="weight">Вес:</string>
+    <string name="description">Описание:</string>
+
+</resources>
