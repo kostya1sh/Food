@@ -1,6 +1,5 @@
 package com.project.food;
 
-import android.app.ProgressDialog;
 import android.content.pm.PackageManager;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
@@ -15,27 +14,21 @@ import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.AdapterView;
-import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 
 import com.j256.ormlite.android.apptools.OpenHelperManager;
 import com.j256.ormlite.dao.Dao;
-import com.project.food.adapters.CategoriesAdapter;
 import com.project.food.db.DBHelper;
+import com.project.food.db.SaveToDBTask;
 import com.project.food.db.entities.CategoryEntity;
 import com.project.food.db.entities.OfferEntity;
 import com.project.food.db.entities.ParamEntity;
+import com.project.food.fragments.CategoriesFragment;
 import com.project.food.fragments.ContactsFragment;
-import com.project.food.fragments.ViewCategoryFragment;
 import com.project.food.xml.Catalog;
-import com.project.food.xml.Category;
-import com.project.food.xml.Offer;
-import com.project.food.xml.Param;
 
 import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -54,18 +47,14 @@ public class MainActivity extends AppCompatActivity
     private Dao<OfferEntity, Integer> offerDao;
     private Dao<ParamEntity, Integer> paramDao;
 
-    private ProgressDialog progressDialog;
+    private ProgressBar progressBar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        progressDialog = new ProgressDialog(this);
-        progressDialog.setCancelable(false);
-        progressDialog.setMessage("Загрузка...");
-        progressDialog.setProgressStyle(ProgressDialog.STYLE_SPINNER);
-        progressDialog.show();
+        progressBar = (ProgressBar) findViewById(R.id.progressBar);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
@@ -82,10 +71,7 @@ public class MainActivity extends AppCompatActivity
 
         ActivityCompat.requestPermissions(
                 MainActivity.this,
-                new String[]{
-                        android.Manifest.permission.INTERNET,
-                        android.Manifest.permission.ACCESS_FINE_LOCATION,
-                },
+                new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION},
                 PERMISSIONS_REQUEST_CODE
         );
 
@@ -100,18 +86,28 @@ public class MainActivity extends AppCompatActivity
                     Toast.makeText(MainActivity.this, "Permissions denied", Toast.LENGTH_SHORT).show();
                     onStop();
                 } else {
-                    Retrofit retrofit = new Retrofit.Builder()
-                            .baseUrl(GET_URL)
-                            .addConverterFactory(SimpleXmlConverterFactory.create())
-                            .build();
-
-                    APIService myAPIService = retrofit.create(APIService.class);
-                    Call<Catalog> call = myAPIService.getCatalog();
-
-                    call.enqueue(this);
-
                     try {
-                        initDB();
+                        if (!initDB()) {
+                            Retrofit retrofit = new Retrofit.Builder()
+                                    .baseUrl(GET_URL)
+                                    .addConverterFactory(SimpleXmlConverterFactory.create())
+                                    .build();
+
+                            APIService myAPIService = retrofit.create(APIService.class);
+                            Call<Catalog> call = myAPIService.getCatalog();
+
+                            call.enqueue(this);
+                        } else {
+                            progressBar.setVisibility(View.GONE);
+                            FragmentManager fragmentManager = getSupportFragmentManager();
+                            CategoriesFragment categoriesFragment = new CategoriesFragment();
+                            categoriesFragment.setCategoryDao(categoryDao);
+                            fragmentManager.beginTransaction()
+                                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                                    .replace(R.id.frag_container, categoriesFragment)
+                                    .addToBackStack("cf")
+                                    .commit();
+                        }
                     } catch (SQLException sqlex) {
                         sqlex.printStackTrace();
                     }
@@ -121,162 +117,43 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    private void initDB() throws SQLException {
+    private boolean initDB() throws SQLException {
         DBHelper dbHelper = OpenHelperManager.getHelper(this, DBHelper.class);
 
         categoryDao = dbHelper.getCategoryDao();
         offerDao = dbHelper.getOfferDao();
         paramDao = dbHelper.getParamDao();
 
+        if (!categoryDao.queryForAll().isEmpty()) {
+            Log.w("DBInit", "db success! have records");
+            return true;
+        } else {
+            Log.w("DBInit", "db success! empty");
+            return false;
+        }
+
        /* List<OfferEntity> offerEntities = offerDao.queryForAll();
         List<ParamEntity> paramEntities = paramDao.queryForAll();
         List<CategoryEntity> categoryEntities = categoryDao.queryForAll();*/
 
-        Log.w("DBInit", "db success!");
+
     }
 
     @Override
     public void onFailure(Call<Catalog> call, Throwable t) {
-        progressDialog.hide();
-
         Toast.makeText(this, "Can not get response from " + call.request().toString(), Toast.LENGTH_LONG).show();
         Log.e("RESPONSE", "Can not get response from " + call.request().toString() + "\n Exception = " + t.getMessage());
-        final ListView listView = (ListView) findViewById(R.id.lvCategories);
-
-        try {
-            listView.setAdapter(new CategoriesAdapter(this, categoryDao.queryForAll()));
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    onCategoryItemClick(adapterView.getAdapter().getItemId(i), listView);
-                }
-            });
-        } catch (SQLException sqlex) {
-            sqlex.printStackTrace();
-        }
     }
 
     @Override
     public void onResponse(Call<Catalog> call, Response<Catalog> response) {
-        try {
-            saveCategoriesToDB(response.body().shop.categories.categoryList);
-            saveOffersToDB(response.body().shop.offers.offerList);
-
-            final ListView listView = (ListView) findViewById(R.id.lvCategories);
-            listView.setAdapter(new CategoriesAdapter(this, categoryDao.queryForAll()));
-            listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    onCategoryItemClick(adapterView.getAdapter().getItemId(i), listView);
-                }
-            });
-
-            progressDialog.hide();
-            Log.w("Response", "saved to db!");
-        } catch (SQLException sqlex) {
-            progressDialog.hide();
-            Log.e("Response", "error while saving to db!");
-            sqlex.printStackTrace();
-        }
-    }
-
-    private void onCategoryItemClick(long id, ListView listView) {
-        FragmentManager fragmentManager = getSupportFragmentManager();
-        ViewCategoryFragment viewCategoryFragment = new ViewCategoryFragment();
-        Bundle bundle = new Bundle();
-        bundle.putLong("c_id", id);
-        viewCategoryFragment.setArguments(bundle);
-        fragmentManager.beginTransaction()
-                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                .replace(R.id.frag_container, viewCategoryFragment)
-                .addToBackStack("vcf")
-                .commit();
-        listView.setVisibility(View.GONE);
-    }
-
-    /**
-     * Save new offers into DB
-     * @param offers offers from xml
-     * @throws SQLException
-     */
-    private void saveOffersToDB(List<Offer> offers) throws SQLException {
-        for (Offer offer : offers) {
-            OfferEntity offerEntity = new OfferEntity();
-            offerEntity.setId(offer.id);
-            offerEntity.setName(offer.name);
-            offerEntity.setUrl(offer.url);
-            offerEntity.setPicture(offer.picture);
-            offerEntity.setPrice(offer.price);
-            offerEntity.setDescription(offer.description);
-
-            List<ParamEntity> paramEntityList = createParamEntityList(offer.params, offerEntity);
-            for (ParamEntity paramEntity : paramEntityList) {
-                paramEntity.setOffer(offerEntity);
-                paramDao.createOrUpdate(paramEntity);
-            }
-
-
-            List<CategoryEntity> categoryEntities = categoryDao.queryForEq("id", offer.categoryId);
-            if (categoryEntities != null && !categoryEntities.isEmpty()) {
-                offerEntity.setCategory(categoryEntities.get(0));
-            }
-
-            List<OfferEntity> offerEntities = offerDao.queryForEq("id", offerEntity.getId());
-            if (offerEntities.isEmpty()) {
-                offerDao.createOrUpdate(offerEntity);
-            }
-            if (!paramEntityList.isEmpty()) {
-                offerDao.update(offerEntity);
-            }
-        }
-    }
-
-    /**
-     * Save new categories into DB
-     * @param categories received categories from xml
-     * @throws SQLException
-     */
-    private void saveCategoriesToDB(List<Category> categories) throws SQLException {
-        for (Category category : categories) {
-            CategoryEntity categoryEntity = new CategoryEntity();
-            categoryEntity.setId(category.id);
-            categoryEntity.setCategory(category.name);
-            List<CategoryEntity> categoryEntities = categoryDao.queryForEq("id", category.id);
-            if (categoryEntities == null || categoryEntities.isEmpty()) {
-                categoryDao.createOrUpdate(categoryEntity);
-            }
-        }
-    }
-
-    /**
-     * Create param entities form received xml
-     * if current param exist for current offer do not create it
-     *
-     * @param params      received params
-     * @param offerEntity current offer
-     * @return entities
-     * @throws SQLException
-     */
-    private List<ParamEntity> createParamEntityList(List<Param> params, OfferEntity offerEntity) throws SQLException {
-        if (params == null) {
-            return new ArrayList<>();
-        }
-
-        List<ParamEntity> paramEntityList = new ArrayList<>();
-        List<OfferEntity> offerEntities = offerDao.queryForEq("id", offerEntity.getId());
-        List<ParamEntity> savedParams = new ArrayList<>();
-        if (!offerEntities.isEmpty()) {
-            savedParams = new ArrayList<>(offerEntities.get(0).getParams());
-        }
-        for (Param param : params) {
-            ParamEntity paramEntity = new ParamEntity();
-            paramEntity.setKey(param.name);
-            paramEntity.setValue(param.value);
-            if (!ParamEntity.isContain(paramEntity, savedParams)) {
-                paramEntityList.add(paramEntity);
-            }
-        }
-        return paramEntityList;
+        SaveToDBTask saveToDBTask = new SaveToDBTask(
+                response.body().shop.offers.offerList,
+                response.body().shop.categories.categoryList,
+                categoryDao, offerDao, paramDao,
+                getSupportFragmentManager(),
+                progressBar);
+        saveToDBTask.execute();
     }
 
     @Override
@@ -288,10 +165,22 @@ public class MainActivity extends AppCompatActivity
             FragmentManager fragmentManager = getSupportFragmentManager();
             int count = fragmentManager.getBackStackEntryCount();
             if (count > 0) {
-                fragmentManager.popBackStack();
                 if (count == 1) {
-                    ListView listView = (ListView) findViewById(R.id.lvCategories);
-                    listView.setVisibility(View.VISIBLE);
+                    if ("cf".equals(fragmentManager.getBackStackEntryAt(0).getName())) {
+                        fragmentManager.popBackStack();
+                        super.onBackPressed();
+                    } else {
+                        fragmentManager.popBackStack();
+                        CategoriesFragment categoriesFragment = new CategoriesFragment();
+                        categoriesFragment.setCategoryDao(categoryDao);
+                        fragmentManager.beginTransaction()
+                                .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                                .replace(R.id.frag_container, categoriesFragment)
+                                .addToBackStack("cf")
+                                .commit();
+                    }
+                } else {
+                    fragmentManager.popBackStack();
                 }
             } else {
                 super.onBackPressed();
@@ -303,15 +192,17 @@ public class MainActivity extends AppCompatActivity
     public boolean onNavigationItemSelected(MenuItem item) {
         // Handle navigation view item clicks here.
         int id = item.getItemId();
-        ListView listView = (ListView) findViewById(R.id.lvCategories);
         if (id == R.id.nav_catalog) {
             FragmentManager fragmentManager = getSupportFragmentManager();
-            int count = fragmentManager.getBackStackEntryCount();
-            for (int i = 0; i < count; i++) {
-                fragmentManager.popBackStack();
-            }
-            listView.setVisibility(View.VISIBLE);
+            CategoriesFragment categoriesFragment = new CategoriesFragment();
+            categoriesFragment.setCategoryDao(categoryDao);
+            fragmentManager.beginTransaction()
+                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                    .replace(R.id.frag_container, categoriesFragment)
+                    .addToBackStack("cf")
+                    .commit();
         } else if (id == R.id.nav_contacts) {
+            progressBar.setVisibility(View.GONE);
             FragmentManager fragmentManager = getSupportFragmentManager();
             ContactsFragment contactsFragment = new ContactsFragment();
             fragmentManager.beginTransaction()
@@ -319,7 +210,6 @@ public class MainActivity extends AppCompatActivity
                     .replace(R.id.frag_container, contactsFragment)
                     .addToBackStack("map")
                     .commit();
-            listView.setVisibility(View.GONE);
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);

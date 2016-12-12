@@ -5,6 +5,8 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -46,21 +48,15 @@ public class ViewCategoryFragment extends Fragment {
             DBHelper dbHelper = OpenHelperManager.getHelper(getContext(), DBHelper.class);
             categoryDao = dbHelper.getCategoryDao();
 
-            ListView lvOffers = (ListView) rootView.findViewById(R.id.lvOffers);
+            RecyclerView rvOffers = (RecyclerView) rootView.findViewById(R.id.lvOffers);
+            rvOffers.setLayoutManager(new LinearLayoutManager(getContext()));
             List<CategoryEntity> categoryEntityList = categoryDao.queryForEq("id", getArguments().getLong("c_id"));
             if (categoryEntityList != null && !categoryEntityList.isEmpty()) {
                 List<OfferEntity> offerEntityList = new ArrayList<>(categoryEntityList.get(0).getOfferList());
                 if (offerEntityList != null && !offerEntityList.isEmpty()) {
-                    lvOffers.setAdapter(new CategoryOffersAdapter(getContext(), offerEntityList));
+                    rvOffers.setAdapter(new CategoryOffersAdapter(getContext(), offerEntityList));
                 }
             }
-            lvOffers.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                @Override
-                public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-                    OfferEntity offerEntity = (OfferEntity) adapterView.getAdapter().getItem(i);
-                    onOffersItemClick(offerEntity);
-                }
-            });
         } catch (SQLException sqlex) {
             sqlex.printStackTrace();
         }
@@ -68,34 +64,4 @@ public class ViewCategoryFragment extends Fragment {
         return rootView;
     }
 
-    private void onOffersItemClick(OfferEntity offer) {
-        AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
-        LayoutInflater inflater = (LayoutInflater) getActivity().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-        View view = inflater.inflate(R.layout.offer_card_layout, null, false);
-        ImageView imgCardPicture = (ImageView) view.findViewById(R.id.imgCardPicture);
-        TextView tvName = (TextView) view.findViewById(R.id.tvCardName);
-        TextView tvWeight = (TextView) view.findViewById(R.id.tvCardWeight);
-        TextView tvPrice = (TextView) view.findViewById(R.id.tvCardPrice);
-        TextView tvDesc = (TextView) view.findViewById(R.id.tvCardDesc);
-
-        if (offer.getPicture() != null) {
-            Picasso.with(getContext()).load(offer.getPicture()).into(imgCardPicture);
-        }
-
-        tvName.setText(" " + offer.getName());
-
-        String weight = "";
-        for (ParamEntity p: offer.getParams()) {
-            if (p.getKey().equals("Вес")) {
-                weight = p.getValue();
-            }
-        }
-        tvWeight.setText(" " + weight);
-
-        tvPrice.setText(" " + offer.getPrice());
-
-        tvDesc.setText(" " + offer.getDescription());
-
-        builder.setView(view).show();
-    }
 }

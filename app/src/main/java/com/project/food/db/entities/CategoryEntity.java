@@ -26,7 +26,7 @@ public class CategoryEntity {
     @ForeignCollectionField(eager = true)
     private Collection<OfferEntity> offerList;
 
-    public CategoryEntity() {    }
+    public CategoryEntity() {}
 
     public String getCategory() {
         return category;

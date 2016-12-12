@@ -24,8 +24,7 @@ public class ParamEntity {
     @DatabaseField(foreign = true, foreignAutoRefresh = true, foreignAutoCreate = true)
     private OfferEntity offer;
 
-    public ParamEntity() {
-    }
+    public ParamEntity() {}
 
     public static boolean isContain(ParamEntity p, List<ParamEntity> pList) {
         if (pList == null || pList.isEmpty()) {

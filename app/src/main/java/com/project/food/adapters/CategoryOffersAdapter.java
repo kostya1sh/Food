@@ -1,10 +1,11 @@
 package com.project.food.adapters;
 
 import android.content.Context;
+import android.support.v7.app.AlertDialog;
+import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -20,26 +21,13 @@ import java.util.List;
  * Created by kostya on 08.12.2016.
  */
 
-public class CategoryOffersAdapter extends BaseAdapter {
+public class CategoryOffersAdapter extends RecyclerView.Adapter<CategoryOffersAdapter.ViewHolder> {
     private Context context;
     private List<OfferEntity> offerEntityList = new ArrayList<>();
 
     public CategoryOffersAdapter(Context context, List<OfferEntity> offerEntityList) {
         this.context = context;
         this.offerEntityList = offerEntityList;
-    }
-
-    @Override
-    public int getCount() {
-        return offerEntityList.size();
-    }
-
-    @Override
-    public Object getItem(int i) {
-        if (i < 0 || i > offerEntityList.size() - 1) {
-            return null;
-        }
-        return offerEntityList.get(i);
     }
 
     @Override
@@ -50,46 +38,87 @@ public class CategoryOffersAdapter extends BaseAdapter {
         return offerEntityList.get(i).getId();
     }
 
-    private static class ViewHolder {
-        private long id;
-        private ImageView imgOfferPicture;
-        private TextView tvOfferName;
-        private TextView tvOfferWeight;
-        private TextView tvOfferPrice;
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        ImageView imgOfferPicture;
+        TextView tvOfferName;
+        TextView tvOfferWeight;
+        TextView tvOfferPrice;
+
+        ViewHolder(View v) {
+            super(v);
+            imgOfferPicture = (ImageView) v.findViewById(R.id.imgOfferPicture);
+            tvOfferName = (TextView) v.findViewById(R.id.tvOfferName);
+            tvOfferWeight = (TextView) v.findViewById(R.id.tvOfferWeight);
+            tvOfferPrice = (TextView) v.findViewById((R.id.tvOfferPrice));
+        }
     }
 
     @Override
-    public View getView(int i, View view, ViewGroup viewGroup) {
-        ViewHolder viewHolder;
-        if (view == null) {
-            viewHolder = new ViewHolder();
-            LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-            view = inflater.inflate(R.layout.item_offer_layout, viewGroup, false);
-            viewHolder.id = i;
-            viewHolder.imgOfferPicture = (ImageView) view.findViewById(R.id.imgOfferPicture);
-            viewHolder.tvOfferName = (TextView) view.findViewById(R.id.tvOfferName);
-            viewHolder.tvOfferWeight = (TextView) view.findViewById(R.id.tvOfferWeight);
-            viewHolder.tvOfferPrice = (TextView) view.findViewById(R.id.tvOfferPrice);
-            view.setTag(viewHolder);
-        } else {
-            viewHolder = (ViewHolder) view.getTag();
-        }
+    public int getItemCount() {
+        return offerEntityList.size();
+    }
 
-        OfferEntity offer = offerEntityList.get(i);
+    @Override
+    public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+        View v = LayoutInflater.from(parent.getContext())
+                .inflate(R.layout.item_offer_layout, parent, false);
+
+        return new CategoryOffersAdapter.ViewHolder(v);
+    }
+
+    @Override
+    public void onBindViewHolder(ViewHolder holder, int position) {
+        final OfferEntity offer = offerEntityList.get(position);
         if (offer.getPicture() != null) {
-            Picasso.with(context).load(offer.getPicture()).into(viewHolder.imgOfferPicture);
+            Picasso.with(context).load(offer.getPicture()).into(holder.imgOfferPicture);
         }
 
-        viewHolder.tvOfferName.setText(offer.getName());
-        viewHolder.tvOfferPrice.setText(offer.getPrice() + "р.");
+        holder.tvOfferName.setText(offer.getName());
+        holder.tvOfferPrice.setText(offer.getPrice() + "р.");
+        String weight = "";
+        for (ParamEntity p : offer.getParams()) {
+            if (p.getKey().equals("Вес")) {
+                weight = p.getValue();
+            }
+        }
+        holder.tvOfferWeight.setText(weight);
+
+        holder.itemView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onOffersItemClick(offer, context);
+            }
+        });
+    }
+
+    private void onOffersItemClick(OfferEntity offer, Context context) {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        LayoutInflater inflater = (LayoutInflater) context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+        View view = inflater.inflate(R.layout.offer_card_layout, null, false);
+        ImageView imgCardPicture = (ImageView) view.findViewById(R.id.imgCardPicture);
+        TextView tvName = (TextView) view.findViewById(R.id.tvCardName);
+        TextView tvWeight = (TextView) view.findViewById(R.id.tvCardWeight);
+        TextView tvPrice = (TextView) view.findViewById(R.id.tvCardPrice);
+        TextView tvDesc = (TextView) view.findViewById(R.id.tvCardDesc);
+
+        if (offer.getPicture() != null) {
+            Picasso.with(context).load(offer.getPicture()).into(imgCardPicture);
+        }
+
+        tvName.setText(" " + offer.getName());
+
         String weight = "";
         for (ParamEntity p: offer.getParams()) {
             if (p.getKey().equals("Вес")) {
                 weight = p.getValue();
             }
         }
-        viewHolder.tvOfferWeight.setText(weight);
+        tvWeight.setText(" " + weight);
 
-        return view;
+        tvPrice.setText(" " + offer.getPrice());
+
+        tvDesc.setText(" " + offer.getDescription());
+
+        builder.setView(view).show();
     }
 }

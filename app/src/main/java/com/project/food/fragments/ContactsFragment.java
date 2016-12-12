@@ -33,17 +33,24 @@ import java.util.List;
 
 public class ContactsFragment extends Fragment implements OnMapReadyCallback {
     private GoogleMap mMap;
-    private GoogleApiClient mGoogleApiClient;
-    private Location mLastLocation;
-
+    private ScrollView scrollView;
 
     @Nullable
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.contacts_layout, null, false);
+        scrollView = (ScrollView) rootView.findViewById(R.id.svContacts);
+
+        return rootView;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
         ScrollableMapFragment scrollableMapFragment =
                 (ScrollableMapFragment) getChildFragmentManager().findFragmentById(R.id.map);
-        final ScrollView scrollView = (ScrollView) rootView.findViewById(R.id.svContacts);
+
         scrollableMapFragment.setListener(new ScrollableMapFragment.OnTouchListener() {
             @Override
             public void onTouch() {
@@ -51,9 +58,6 @@ public class ContactsFragment extends Fragment implements OnMapReadyCallback {
             }
         });
         scrollableMapFragment.getMapAsync(this);
-
-
-        return rootView;
     }
 
     @Override
@@ -68,14 +72,20 @@ public class ContactsFragment extends Fragment implements OnMapReadyCallback {
         }
 
         LatLng address1 = getLocationFromAddress(getContext(), "95, Dzerzhinskogo, Minks, Belarus");
-        mMap.addMarker(new MarkerOptions().position(address1).title("Marker in Minsk"));
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(address1));
+        if (address1 != null) {
+            mMap.addMarker(new MarkerOptions().position(address1).title("Marker in Minsk"));
+            mMap.moveCamera(CameraUpdateFactory.newLatLng(address1));
+        }
 
         LatLng address2 = getLocationFromAddress(getContext(), "10b, Golubeva, Minks, Belarus");
-        mMap.addMarker(new MarkerOptions().position(address2).title("Golubeva 10b"));
+        if (address2 != null) {
+            mMap.addMarker(new MarkerOptions().position(address2).title("Golubeva 10b"));
+        }
 
         LatLng address3 = getLocationFromAddress(getContext(), "14b, Golubeva, Minks, Belarus");
-        mMap.addMarker(new MarkerOptions().position(address3).title("Golubeva 14b"));
+        if (address3 != null) {
+            mMap.addMarker(new MarkerOptions().position(address3).title("Golubeva 14b"));
+        }
     }
 
     public LatLng getLocationFromAddress(Context context, String strAddress)

@@ -4,6 +4,8 @@
     <string name="navigation_drawer_open">Open navigation drawer</string>
     <string name="navigation_drawer_close">Close navigation drawer</string>
 
+    <string name="no_categories">Нет доступных категории.</string>
+
     <string name="catalog">Каталог</string>
     <string name="contacts">Контакты</string>
 
