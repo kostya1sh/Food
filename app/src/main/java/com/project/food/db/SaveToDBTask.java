@@ -68,13 +68,18 @@ public class SaveToDBTask extends AsyncTask<Void, Integer, Integer> {
             if (progressBar != null) {
                 progressBar.setVisibility(View.GONE);
             }
-            CategoriesFragment categoriesFragment = new CategoriesFragment();
-            categoriesFragment.setCategoryDao(categoryDao);
-            fragmentManager.beginTransaction()
-                    .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
-                    .replace(R.id.frag_container, categoriesFragment)
-                    .addToBackStack("cf")
-                    .commit();
+            if (fragmentManager.getBackStackEntryCount() <= 0 ||
+                    "cf".equals(fragmentManager
+                    .getBackStackEntryAt(fragmentManager.getBackStackEntryCount() - 1)
+                    .getName())) {
+                CategoriesFragment categoriesFragment = new CategoriesFragment();
+                categoriesFragment.setCategoryDao(categoryDao);
+                fragmentManager.beginTransaction()
+                        .setCustomAnimations(android.R.anim.fade_in, android.R.anim.fade_out)
+                        .replace(R.id.frag_container, categoriesFragment)
+                        .addToBackStack("cf")
+                        .commit();
+            }
         } else {
             progressBar.setVisibility(View.GONE);
         }
